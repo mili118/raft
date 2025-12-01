@@ -1,0 +1,4 @@
+Starting Raft node 1 on port 50051
+Peers: [(2, "localhost:50052"), (3, "localhost:50053")]
+gRPC server listening on 0.0.0.0:50051
+Node 1 granted vote to 2 for term 1
