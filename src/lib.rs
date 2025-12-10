@@ -4,4 +4,4 @@ pub mod pb {
 
 mod raft_node;
 
-pub use crate::raft_node::{ApplyMsg, RaftNode, ServerType};
+pub use crate::raft_node::{RaftNode, ServerType};

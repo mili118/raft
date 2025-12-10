@@ -2,8 +2,14 @@ syntax = "proto3";
 
 package raftpb;
 
+message Command {
+  string kind = 1;
+  string key = 2;
+  string value = 3;
+}
+
 message Entry {
-  bytes command = 1;
+  Command command = 1;
   int32 term = 2;
 }
 

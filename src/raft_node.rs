@@ -11,6 +11,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use std::collections::HashMap;
 
 use crate::pb::{
+    Command,
     raft_client::RaftClient,
     raft_server::{Raft, RaftServer},
     AppendEntriesArgs, AppendEntriesReply, Entry as PbEntry, RequestVoteArgs, RequestVoteReply,
@@ -25,12 +26,6 @@ pub enum ServerType {
     Candidate,
 }
 
-#[derive(Clone, Debug)]
-pub struct ApplyMsg {
-    pub command_valid: bool,
-    pub command: Vec<u8>,
-    pub command_index: i32,
-}
 
 struct RaftState {
     status: ServerType,
@@ -67,7 +62,7 @@ impl RaftNode {
         let mut log = Vec::new();
 
         log.push(PbEntry {
-            command: Vec::new(),
+            command: None,
             term: 0,
         });
 
@@ -110,7 +105,15 @@ impl RaftNode {
         (st.current_term, st.status == ServerType::Leader)
     }
 
-    pub async fn start(&self, command: Vec<u8>) -> (i32, i32, bool) {
+    pub async fn print_kv(&self) {
+        let st = self.state.lock().await;
+        info!("Server #{} has entries:", self.me);
+        for (key, value) in &st.kv_store {
+            info!("Key: {}, Value: {}", key, value);
+        }
+    }
+
+    pub async fn start(&self, command: Command) -> (i32, i32, bool) {
         if self.killed() {
             return (-1, -1, false);
         }
@@ -123,7 +126,7 @@ impl RaftNode {
         let index = st.log.len() as i32;
         let term = st.current_term;
         let entry = PbEntry {
-            command,
+            command: Some(command),
             term: term,
         };
         st.log.push(entry);
@@ -131,7 +134,7 @@ impl RaftNode {
         (index, term, true)
     }
 
-    /// Start the ticker + apply_command loops and gRPC server.
+    // Start the ticker + apply_command loops and gRPC server.
     pub async fn run(
         self: Arc<Self>,
         listen_addr: String,
@@ -448,10 +451,9 @@ impl RaftNode {
                     let mut st = self.state.lock().await;
 
                     if st.last_applied < st.commit_index {
-                        // There is something to apply
                         st.last_applied += 1;
                         let idx = st.last_applied;
-                        let cmd = st.log[idx as usize].command.clone();
+                        let cmd = st.log[idx as usize].command.clone().expect("command missing");
                         break (idx, cmd);
                     }
 
@@ -464,9 +466,22 @@ impl RaftNode {
                 }
             };
 
+            let mut st = self.state.lock().await;
+            if command.kind == "PUT" {
+                st.kv_store.insert(command.key.clone(), command.value.clone());
+            } else if command.kind == "APPEND" {
+                if let Some(val) = st.kv_store.get_mut(&command.key) {
+                    val.push_str(&*command.value);
+                }
+            }
+
             info!(
-                "Server [{}] applies command: index [{}], content [{:?}]",
-                self.me, command_index, command
+                "Server [{}] applies command: index [{}], kind={}, key={}, value={}",
+                self.me,
+                command_index,
+                command.kind,
+                command.key,
+                command.value
             );
         }
     }
