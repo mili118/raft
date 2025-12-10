@@ -437,39 +437,37 @@ impl RaftNode {
         }
     }
 
-    async fn apply_command(self: Arc<Self>) {
+    pub async fn apply_command(self: Arc<Self>) {
         loop {
             if self.killed() {
                 return;
             }
 
-            let maybe_msg: Option<ApplyMsg> = {
-                let mut st = self.state.lock().await;
-                if st.last_applied < st.commit_index {
-                    st.last_applied += 1;
-                    let idx = st.last_applied;
-                    let entry = st.log[idx as usize].clone();
-                    Some(ApplyMsg {
-                        command_valid: true,
-                        command: entry.command,
-                        command_index: idx,
-                    })
-                } else {
-                    None
+            let (command_index, command) = {
+                loop {
+                    let mut st = self.state.lock().await;
+
+                    if st.last_applied < st.commit_index {
+                        // There is something to apply
+                        st.last_applied += 1;
+                        let idx = st.last_applied;
+                        let cmd = st.log[idx as usize].command.clone();
+                        break (idx, cmd);
+                    }
+
+                    drop(st);
+                    self.notify.notified().await;
+
+                    if self.killed() {
+                        return;
+                    }
                 }
             };
 
-            if let Some(msg) = maybe_msg {
-                info!(
-                    "Server [{}] applies command: index [{}], content-length [{}]",
-                    self.me,
-                    msg.command_index,
-                    msg.command.len()
-                );
-                // apply command here
-            } else {
-                self.notify.notified().await;
-            }
+            info!(
+                "Server [{}] applies command: index [{}], content [{:?}]",
+                self.me, command_index, command
+            );
         }
     }
 }
