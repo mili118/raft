@@ -478,6 +478,8 @@ impl RaftNode {
                 if let Some(val) = st.kv_store.get_mut(&command.key) {
                     val.push_str(&*command.value);
                 }
+            } else if command.kind == "DELETE" {
+                st.kv_store.remove(&command.key.clone());
             }
 
             info!(

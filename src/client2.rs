@@ -10,9 +10,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let server_addrs = vec![
-        "http://127.0.0.1:5001".to_string(),
-        "http://127.0.0.1:5002".to_string(),
-        "http://127.0.0.1:5003".to_string(),
+        "http://127.0.0.1:6000".to_string(),
+        "http://127.0.0.1:6001".to_string(),
+        "http://127.0.0.1:6002".to_string(),
     ];
 
     sleep(Duration::from_secs(3)).await;
