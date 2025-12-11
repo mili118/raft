@@ -30,26 +30,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let leader_addr = leader_addr.expect("No leader found");
-    println!("Client 1: leader is {}", leader_addr);
+    println!("Client 2: leader is {}", leader_addr);
 
-    for i in 0..3 {
-        let key = i.to_string();
-        let value = (i * 100).to_string();
+    let append_cmd = Command {
+        kind: "APPEND".to_string(),
+        key: "1".to_string(),
+        value: " 2947".to_string(),
+    };
 
-        let cmd = Command {
-            kind: "PUT".to_string(),
-            key,
-            value,
-        };
+    kv_serve(append_cmd, &leader_addr).await?;
 
-        kv_serve(cmd, &leader_addr).await?;
+    let get_cmd = Command {
+        kind: "GET".to_string(),
+        key: "1".to_string(),
+        value: "".to_string(),
+    };
 
-        sleep(Duration::from_secs(1)).await;
+    if let Some(value) = kv_serve(get_cmd, &leader_addr).await? {
+        println!("Client receives value: {}", value);
     }
 
     Ok(())
 }
-
 
 async fn kv_serve(cmd: Command, leader_addr: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let req = SendCommandRequest {
