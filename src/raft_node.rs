@@ -107,9 +107,8 @@ impl RaftNode {
 
     pub async fn print_kv(&self) {
         let st = self.state.lock().await;
-        info!("Server #{} has entries:", self.me);
         for (key, value) in &st.kv_store {
-            info!("Key: {}, Value: {}", key, value);
+            info!("Server #{} has entry: Key {}, Value {}", self.me, key, value);
         }
     }
 

@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "http://127.0.0.1:5002".to_string(),
         "http://127.0.0.1:5003".to_string(),
     ];
-    
+
     let listen_addr = match me {
         0 => "127.0.0.1:5001",
         1 => "127.0.0.1:5002",
@@ -35,9 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("id must be 0, 1, or 2");
             std::process::exit(1);
         }
-    }
-        .to_string();
-    
+    }.to_string();
+
     let node: Arc<RaftNode> = RaftNode::new(peers, me);
 
     // Start the Raft RPC server + ticker + applier in the background
@@ -47,9 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Raft server error: {:?}", e);
         }
     });
-    
+
     sleep(Duration::from_secs(1)).await;
-    
+
     let (term, is_leader) = node.get_state().await;
     println!("Node {} in term {}: is_leader = {}", me, term, is_leader);
 
@@ -79,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     node.print_kv().await;
     node.kill();
 
-    // Let background tasks finish cleanly
+    // Let background tasks finish
     sleep(Duration::from_millis(200)).await;
 
     Ok(())
