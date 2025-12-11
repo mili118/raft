@@ -15,6 +15,7 @@ use crate::pb::{
     raft_client::RaftClient,
     raft_server::{Raft, RaftServer},
     AppendEntriesArgs, AppendEntriesReply, Entry as PbEntry, RequestVoteArgs, RequestVoteReply,
+    GetStateReply, GetStateRequest, SendCommandReply, SendCommandRequest,
 };
 
 const TIMEOUT_HEARTBEAT_MS: i64 = 100;
@@ -110,6 +111,11 @@ impl RaftNode {
         for (key, value) in &st.kv_store {
             info!("Server #{} has entry: Key {}, Value {}", self.me, key, value);
         }
+    }
+
+    pub async fn get_value(&self, key: &str) -> Option<String> {
+        let st = self.state.lock().await;
+        st.kv_store.get(key).cloned()
     }
 
     pub async fn start(&self, command: Command) -> (i32, i32, bool) {
@@ -491,8 +497,7 @@ fn random_election_timeout_ms() -> i64 {
     400 + rng.gen_range(0..400)
 }
 
-/// gRPC service implementation
-
+// gRPC service implementation
 pub struct RaftService {
     pub node: Arc<RaftNode>,
 }
@@ -619,6 +624,35 @@ impl Raft for RaftService {
         Ok(Response::new(AppendEntriesReply {
             term: st.current_term,
             success: true,
+        }))
+    }
+
+    async fn get_state(
+        &self,
+        _request: Request<GetStateRequest>,
+    ) -> Result<Response<GetStateReply>, Status> {
+        let (_term, is_leader) = self.node.get_state().await;
+        Ok(Response::new(GetStateReply { is_leader }))
+    }
+
+    async fn send_command(
+        &self,
+        request: Request<SendCommandRequest>,
+    ) -> Result<Response<SendCommandReply>, Status> {
+        let req = request.into_inner();
+        let cmd: Command = req
+            .command
+            .ok_or_else(|| Status::invalid_argument("missing command"))?;
+
+        if cmd.kind == "GET" {
+            let val = self.node.get_value(&cmd.key).await.unwrap_or_default();
+            return Ok(Response::new(SendCommandReply { value: val }));
+        }
+
+        self.node.start(cmd).await;
+
+        Ok(Response::new(SendCommandReply {
+            value: String::new(),
         }))
     }
 }

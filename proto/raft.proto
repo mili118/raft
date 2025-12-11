@@ -13,6 +13,20 @@ message Entry {
   int32 term = 2;
 }
 
+message GetStateRequest {}
+
+message GetStateReply {
+  bool is_leader = 1;
+}
+
+message SendCommandRequest {
+  Command command = 1;
+}
+
+message SendCommandReply {
+  string value = 1;
+}
+
 message RequestVoteArgs {
   int32 term = 1;
   int32 candidate_id = 2;
@@ -42,4 +56,6 @@ message AppendEntriesReply {
 service Raft {
   rpc RequestVote(RequestVoteArgs) returns (RequestVoteReply);
   rpc AppendEntries(AppendEntriesArgs) returns (AppendEntriesReply);
+  rpc GetState(GetStateRequest) returns (GetStateReply);
+  rpc SendCommand(SendCommandRequest) returns (SendCommandReply);
 }
