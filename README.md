@@ -1,1 +1,1 @@
-./run.sh for simple test
+./test_failure.sh for crash test
